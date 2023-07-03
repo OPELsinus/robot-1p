@@ -23,7 +23,7 @@ from zipfile import ZipFile
 
 import pyautogui
 import requests
-import telegram
+
 import win32clipboard
 from openpyxl import load_workbook
 from openpyxl.styles import Side, Border, Font

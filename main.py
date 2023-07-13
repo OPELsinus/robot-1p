@@ -131,15 +131,14 @@ if __name__ == '__main__':
     df_wnodes = first_request()
     df_wnodes.columns = ['code', 'stat_code', 'unit', 'name', 'weight', 'group']
 
-    for kek in range(2):
-        donors = pd.read_excel(r'\\172.16.8.87\d\Dauren\codes.xlsx', sheet_name=kek)
+    for kek in range(3):
+        donors = pd.read_excel(r'\\172.16.8.87\d\Dauren\codes_my.xlsx', sheet_name=kek)
 
-        for ind, donor in enumerate(donors.columns[5:]):
+        for ind, donor in enumerate(donors.columns[1:]):
 
             df_total = pd.DataFrame(columns=['code', 'article', 'name', 'unit', 'weight', 'price', 'sold', 'sold_in_unit', 'acc_price'])
 
             df_total.loc[0] = ['Стат. Отчет по продукции собственного производства', '', '', '', '', '', '', '', '']
-            df_total.loc[len(df_total)] = ['', '', '', '', '', '', '', '', '']
 
             donors_without_id = donors[donor].dropna().copy()
             donors_without_id.loc[len(donors_without_id)] = donor
@@ -167,6 +166,7 @@ if __name__ == '__main__':
                     df.columns = ['code', 'avg_price', 'quantity', 'turnover_with_vat', 'acc_cost']
                 except:
                     print("HUETA OTLETELA!!!!!!!!!!!!!!!!!!!!!!")
+                    df_total.loc[len(df_total)] = ['', '', '', '', '', '', '', '', '']
                     df_total.loc[len(df_total)] = ['Дата выгрузки', '', '', '', '', '', '', '', '']
                     df_total.loc[len(df_total)] = [f"Площадка: {donors_with_id.loc[ind1, 'name']}", '', '', '', '', '', '', '', '']
                     df_total.loc[len(df_total)] = ['Пользователь: Робот Ш..', '', '', '', '', '', '', '', '']
@@ -207,8 +207,8 @@ if __name__ == '__main__':
                     start = len(df_total)
 
                     for row in range(len(cur_df)):
-                        df_total.loc[len(df_total)] = [cur_df.loc[row, 'code'], cur_df.loc[row, 'stat_code'], cur_df.loc[row, 'name'], cur_df.loc[row, 'unit'], cur_df.loc[row, 'weight'], cur_df.loc[row, 'avg_price'], cur_df.loc[row, 'quantity'], cur_df.loc[row, 'quantity'], cur_df.loc[row, 'acc_cost']]
+                        df_total.loc[len(df_total)] = [cur_df.loc[row, 'code'], cur_df.loc[row, 'stat_code'], cur_df.loc[row, 'name'], cur_df.loc[row, 'unit'], cur_df.loc[row, 'weight'], cur_df.loc[row, 'avg_price'], cur_df.loc[row, 'quantity'], float(cur_df.loc[row, 'quantity']) / float(cur_df.loc[row, 'weight']), cur_df.loc[row, 'acc_cost']]
                     df_total.loc[len(df_total)] = [f'ИТОГО: {group}', '', '', '', '', '', sum(cur_df['quantity']), sum(cur_df['quantity']), sum(df_total.loc[start:, 'acc_price'].astype('float'))]
 
-            df_total.to_excel(rf'C:\Users\Abdykarim.D\Desktop\{donor}.xlsx', header=None, index=False)
+            df_total.to_excel(rf'C:\Users\Abdykarim.D\Desktop\{donor}_мой.xlsx', header=None, index=False)
             print('SAVED', donor)

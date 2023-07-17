@@ -1,3 +1,5 @@
+import datetime
+
 import psycopg2
 
 import cx_Oracle
@@ -130,6 +132,8 @@ if __name__ == '__main__':
 
     df_wnodes = first_request()
     df_wnodes.columns = ['code', 'stat_code', 'unit', 'name', 'weight', 'group']
+    df_wnodes['weight'] = df_wnodes['weight'].astype(float)
+    df_wnodes['stat_code'] = df_wnodes['stat_code'].astype(int)
 
     for kek in range(3):
         donors = pd.read_excel(r'\\172.16.8.87\d\Dauren\codes_my.xlsx', sheet_name=kek)
@@ -176,6 +180,11 @@ if __name__ == '__main__':
 
                     continue
 
+                df['avg_price'] = df['avg_price'].astype(float)
+                df['quantity'] = df['quantity'].astype(float)
+                df['turnover_with_vat'] = df['turnover_with_vat'].astype(float)
+                df['acc_cost'] = df['acc_cost'].astype(float)
+
                 df_wnodes['code'] = df_wnodes['code'].astype('str')
                 df['code'] = df['code'].astype('str')
 
@@ -184,7 +193,7 @@ if __name__ == '__main__':
                 df_new['code'] = df_new['code'].astype('int')
                 df_new[df_new['group'] == 'Хлеб ржаной'].sort_values(by=['code'])
 
-                df_total.loc[len(df_total)] = ['Дата выгрузки', '', '', '', '', '', '', '', '']
+                df_total.loc[len(df_total)] = [f'Дата выгрузки: {datetime.datetime.now()}', '', '', '', '', '', '', '', '']
                 df_total.loc[len(df_total)] = [f"Площадка: {donors_with_id.loc[ind1, 'name']}", '', '', '', '', '', '', '', '']
                 df_total.loc[len(df_total)] = ['Пользователь: Робот Ш..', '', '', '', '', '', '', '', '']
                 df_total.loc[len(df_total)] = ['Альтернативная иерархия: Kуры(включая цыплят),  свежий и охл., части тушек не обваленные [119001],Барнина свежая и охл. : четвертины и отруба [119002],Блюда готовые грибные не замор [119003],Блюда готовые из говядины [119004],Блюда готовые из мясо домашней птицы [119005],Блюда готовые овощные не замороженные [119006],Блюда готовые прочие [119007],Блюда готовые рыбные [119008],'
@@ -209,6 +218,10 @@ if __name__ == '__main__':
                     for row in range(len(cur_df)):
                         df_total.loc[len(df_total)] = [cur_df.loc[row, 'code'], cur_df.loc[row, 'stat_code'], cur_df.loc[row, 'name'], cur_df.loc[row, 'unit'], cur_df.loc[row, 'weight'], cur_df.loc[row, 'avg_price'], cur_df.loc[row, 'quantity'], float(cur_df.loc[row, 'quantity']) / float(cur_df.loc[row, 'weight']), cur_df.loc[row, 'acc_cost']]
                     df_total.loc[len(df_total)] = [f'ИТОГО: {group}', '', '', '', '', '', sum(cur_df['quantity']), sum(cur_df['quantity']), sum(df_total.loc[start:, 'acc_price'].astype('float'))]
+
+            # for i in df_total.columns[4:]:
+            #     df_total[i] = df_total[i].astype(float)
+            # df_total['article'] = df_total['article'].astype(float)
 
             df_total.to_excel(rf'C:\Users\Abdykarim.D\Desktop\{donor}_мой.xlsx', header=None, index=False)
             print('SAVED', donor)

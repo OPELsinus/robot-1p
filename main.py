@@ -103,29 +103,27 @@ def second_request(store_id, start_date, end_date):
     return df
 
 
-def get_donors_id(donors_without_id):
+def get_donors_id(donors_without_id1):
     conn = psycopg2.connect(dbname='adb', host='172.16.10.22', port='5432',
                             user='rpa_robot', password='Qaz123123+')
 
     cur = conn.cursor(name='1583_first_part')
-
     query = f"""
         select store_number, source_store_id, source_branch_id, store_name
         from dwh_data.dim_store ds 
-        where store_name like any (array[{[el for el in donors_without_id]}])
+        where store_name like any (array[{[el for el in donors_without_id1]}])
         group by store_number, source_store_id, source_branch_id, store_name
     """
-
     cur.execute(query)
 
     # print('Executed')
 
-    donors_with_id = pd.DataFrame(cur.fetchall())
+    donors_with_id1 = pd.DataFrame(cur.fetchall())
 
     cur.close()
     conn.close()
 
-    return donors_with_id
+    return donors_with_id1
 
 
 if __name__ == '__main__':
@@ -135,10 +133,10 @@ if __name__ == '__main__':
     df_wnodes['weight'] = df_wnodes['weight'].astype(float)
     df_wnodes['stat_code'] = df_wnodes['stat_code'].astype(int)
 
-    for kek in range(3):
+    for kek in range(2, 3):
         donors = pd.read_excel(r'\\172.16.8.87\d\Dauren\codes_my.xlsx', sheet_name=kek)
 
-        for ind, donor in enumerate(donors.columns[1:]):
+        for ind, donor in enumerate(donors.columns[9:]):
 
             df_total = pd.DataFrame(columns=['code', 'article', 'name', 'unit', 'weight', 'price', 'sold', 'sold_in_unit', 'acc_price'])
 
@@ -146,16 +144,17 @@ if __name__ == '__main__':
 
             donors_without_id = donors[donor].dropna().copy()
             donors_without_id.loc[len(donors_without_id)] = donor
-
+            # print(donors_without_id)
             donors_with_id = get_donors_id(donors_without_id)
 
             donors_with_id.columns = ['id1', 'id', 'code', 'name']
+
             # print(donors_with_id)
             # print(donors_with_id[donors_with_id['name'] == donor]['id'])
             try:
                 target_id = donors_with_id[donors_with_id['name'] == donor]['id'].iloc[0]
             except:
-                continue
+                target_id = donors_with_id['id'].iloc[0]
             first_row_index = donors_with_id.index[0]
             target_index = donors_with_id[donors_with_id['id'] == target_id].index[0]
 
@@ -216,7 +215,7 @@ if __name__ == '__main__':
                     start = len(df_total)
 
                     for row in range(len(cur_df)):
-                        df_total.loc[len(df_total)] = [cur_df.loc[row, 'code'], cur_df.loc[row, 'stat_code'], cur_df.loc[row, 'name'], cur_df.loc[row, 'unit'], cur_df.loc[row, 'weight'], cur_df.loc[row, 'avg_price'], cur_df.loc[row, 'quantity'], float(cur_df.loc[row, 'quantity']) / float(cur_df.loc[row, 'weight']), cur_df.loc[row, 'acc_cost']]
+                        df_total.loc[len(df_total)] = [cur_df.loc[row, 'code'], cur_df.loc[row, 'stat_code'], cur_df.loc[row, 'name'], cur_df.loc[row, 'unit'], cur_df.loc[row, 'weight'], cur_df.loc[row, 'avg_price'], cur_df.loc[row, 'quantity'], float(cur_df.loc[row, 'quantity']) * float(cur_df.loc[row, 'weight']), cur_df.loc[row, 'acc_cost']]
                     df_total.loc[len(df_total)] = [f'ИТОГО: {group}', '', '', '', '', '', sum(cur_df['quantity']), sum(cur_df['quantity']), sum(df_total.loc[start:, 'acc_price'].astype('float'))]
 
             # for i in df_total.columns[4:]:

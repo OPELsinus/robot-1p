@@ -133,10 +133,10 @@ if __name__ == '__main__':
     df_wnodes['weight'] = df_wnodes['weight'].astype(float)
     df_wnodes['stat_code'] = df_wnodes['stat_code'].astype(int)
 
-    for kek in range(2, 3):
+    for kek in range(3):
         donors = pd.read_excel(r'\\172.16.8.87\d\Dauren\codes_my.xlsx', sheet_name=kek)
 
-        for ind, donor in enumerate(donors.columns[9:]):
+        for ind, donor in enumerate(donors.columns[1:]):
 
             df_total = pd.DataFrame(columns=['code', 'article', 'name', 'unit', 'weight', 'price', 'sold', 'sold_in_unit', 'acc_price'])
 

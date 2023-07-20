@@ -1,4 +1,8 @@
 import datetime
+import os
+import shutil
+from pathlib import Path
+from time import sleep
 
 import psycopg2
 
@@ -6,6 +10,8 @@ import cx_Oracle
 
 import pandas as pd
 
+from config import logger, owa_username, owa_password, download_path, smtp_host, smtp_author, tg_token, chat_id
+from tools import update_credentials, send_message_by_smtp, send_message_to_tg
 
 groups = [
     'Kуры(включая цыплят),  свежий и охл., части тушек не обваленные',
@@ -128,13 +134,39 @@ def get_donors_id(donors_without_id1):
 
 if __name__ == '__main__':
 
+    today = datetime.date.today()
+
+    quarters = [[1, 2, 3], [4, 5, 6], [7, 8, 9], [10, 11, 12]]
+
+    month = today.month
+    day = today.day
+    year = today.year
+
+    range_to_load = []
+
+    for ind, quarter in enumerate(quarters):
+        if month in quarter and month == quarters[ind][0]:
+
+            if month == 1:
+                range_to_load.append(datetime.date(year - 1, quarters[ind - 1][0], 1).strftime('%Y-%m-%d'))
+                range_to_load.append((datetime.date(year, 1, 1) - datetime.timedelta(days=1)).strftime('%Y-%m-%d'))
+            else:
+                range_to_load.append(datetime.date(year, quarters[ind - 1][0], 1).strftime('%Y-%m-%d'))
+                range_to_load.append((datetime.date(year, quarters[ind - 1][-1] + 1, 1) - datetime.timedelta(days=1)).strftime('%Y-%m-%d'))
+    # print(range_to_load)
+    logger.info(range_to_load)
+
+    if len(range_to_load) == 0:
+        exit()
+
     df_wnodes = first_request()
     df_wnodes.columns = ['code', 'stat_code', 'unit', 'name', 'weight', 'group']
     df_wnodes['weight'] = df_wnodes['weight'].astype(float)
     df_wnodes['stat_code'] = df_wnodes['stat_code'].astype(int)
 
-    for kek in range(3):
-        donors = pd.read_excel(r'\\172.16.8.87\d\Dauren\codes_my.xlsx', sheet_name=kek)
+    for sheets in range(3):
+        update_credentials(Path(r'\\172.16.8.87\d'), owa_username, owa_password)
+        donors = pd.read_excel(r'\\172.16.8.87\d\Dauren\codes_my.xlsx', sheet_name=sheets)
 
         for ind, donor in enumerate(donors.columns[1:]):
 
@@ -162,13 +194,13 @@ if __name__ == '__main__':
             donors_with_id = donors_with_id.reset_index(drop=True)
 
             for ind1, single_donor_id in enumerate(donors_with_id['id']):
-                print('Started', donors_with_id['name'].iloc[ind1])
-                df = second_request(single_donor_id, '2023-04-01', '2023-06-30')
+                logger.info(f"Started {donors_with_id['name'].iloc[ind1]}")
+                df = second_request(single_donor_id, range_to_load[0], range_to_load[1])
                 # print(df, single_donor_id, donors_with_id.iloc[ind1])
                 try:
                     df.columns = ['code', 'avg_price', 'quantity', 'turnover_with_vat', 'acc_cost']
                 except:
-                    print("HUETA OTLETELA!!!!!!!!!!!!!!!!!!!!!!")
+                    logger.info("HUETA OTLETELA!!!!!!!!!!!!!!!!!!!!!!")
                     df_total.loc[len(df_total)] = ['', '', '', '', '', '', '', '', '']
                     df_total.loc[len(df_total)] = ['Дата выгрузки', '', '', '', '', '', '', '', '']
                     df_total.loc[len(df_total)] = [f"Площадка: {donors_with_id.loc[ind1, 'name']}", '', '', '', '', '', '', '', '']
@@ -222,5 +254,31 @@ if __name__ == '__main__':
             #     df_total[i] = df_total[i].astype(float)
             # df_total['article'] = df_total['article'].astype(float)
 
-            df_total.to_excel(rf'C:\Users\Abdykarim.D\Desktop\{donor}_мой.xlsx', header=None, index=False)
-            print('SAVED', donor)
+            try:
+                os.makedirs(rf'{download_path}\1p')
+            except:
+                pass
+
+            df_total.to_excel(rf'{download_path}\1p\{donor}_dwh.xlsx', header=None, index=False)
+            logger.info(fr'SAVED {donor}')
+
+    zip_file_name = f'Выгрузка 1П за {range_to_load[0]} - {range_to_load[1]}'
+    zip_file_path = os.path.join(rf'{download_path}\1p_zip', zip_file_name)
+
+    try:
+        Path(zip_file_path + '.zip').unlink()
+    except:
+        pass
+    try:
+        os.makedirs(rf'{download_path}\1p_zip')
+    except:
+        pass
+
+    shutil.make_archive(zip_file_path, 'zip', rf'{download_path}\1p')
+
+    send_message_by_smtp(smtp_host, to=['Abdykarim.D@magnum.kz'], subject=f'Выгрузка отчёта 1П за {range_to_load[0]} - {range_to_load[1]}',
+                         body='Результаты в приложении', username=smtp_author,
+                         attachments=[zip_file_path + '.zip'])
+
+    send_message_to_tg(tg_token, chat_id, f'Выгрузка 1П завершилась\n\nОтрабатывал за период:\n{range_to_load[0]} - {range_to_load[1]}')
+

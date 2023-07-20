@@ -1,15 +1,22 @@
 import datetime
 
-# Get the current date
-current_date = datetime.date.today()
+today = datetime.date.today()
 
-# Calculate the previous quarter's start and end dates
-if current_date.month <= 3:
-    previous_quarter_start = datetime.date(current_date.year - 1, 10, 1)
-    previous_quarter_end = datetime.date(current_date.year - 1, 12, 31)
-else:
-    previous_quarter_start = datetime.date(current_date.year, (current_date.month - 3), 1)
-    previous_quarter_end = datetime.date(current_date.year, (current_date.month - 1), 1) - datetime.timedelta(days=1)
+quarters = [[1, 2, 3], [4, 5, 6], [7, 8, 9], [10, 11, 12]]
 
-print("Previous Quarter's Start Date:", previous_quarter_start)
-print("Previous Quarter's End Date:", previous_quarter_end)
+month = today.month
+day = today.day
+year = today.year
+
+range_to_load = []
+
+for ind, quarter in enumerate(quarters):
+    if month in quarter and month == quarters[ind][0]:
+
+        if month == 1:
+            range_to_load.append(datetime.date(year - 1, quarters[ind - 1][0], 1).strftime('%Y-%m-%d'))
+            range_to_load.append((datetime.date(year, 1, 1) - datetime.timedelta(days=1)).strftime('%Y-%m-%d'))
+        else:
+            range_to_load.append(datetime.date(year, quarters[ind - 1][0], 1).strftime('%Y-%m-%d'))
+            range_to_load.append((datetime.date(year, quarters[ind - 1][-1] + 1, 1) - datetime.timedelta(days=1)).strftime('%Y-%m-%d'))
+print(range_to_load)

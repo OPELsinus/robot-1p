@@ -10,7 +10,7 @@ import cx_Oracle
 
 import pandas as pd
 
-from config import logger, owa_username, owa_password, download_path, smtp_host, smtp_author, tg_token, chat_id
+from config import logger, owa_username, owa_password, smtp_host, smtp_author, tg_token, chat_id, working_path
 from tools import update_credentials, send_message_by_smtp, send_message_to_tg
 
 groups = [
@@ -200,7 +200,7 @@ if __name__ == '__main__':
                 try:
                     df.columns = ['code', 'avg_price', 'quantity', 'turnover_with_vat', 'acc_cost']
                 except:
-                    logger.info("HUETA OTLETELA!!!!!!!!!!!!!!!!!!!!!!")
+                    logger.info("Can't match columns!!!!!!!!!!!!!!!!!!!!!!")
                     df_total.loc[len(df_total)] = ['', '', '', '', '', '', '', '', '']
                     df_total.loc[len(df_total)] = ['Дата выгрузки', '', '', '', '', '', '', '', '']
                     df_total.loc[len(df_total)] = [f"Площадка: {donors_with_id.loc[ind1, 'name']}", '', '', '', '', '', '', '', '']
@@ -255,28 +255,28 @@ if __name__ == '__main__':
             # df_total['article'] = df_total['article'].astype(float)
 
             try:
-                os.makedirs(rf'{download_path}\1p')
+                os.makedirs(fr'{working_path}\1p')
             except:
                 pass
 
-            df_total.to_excel(rf'{download_path}\1p\{donor}_dwh.xlsx', header=None, index=False)
+            df_total.to_excel(fr'{working_path}\1p\{donor}_dwh.xlsx', header=None, index=False)
             logger.info(fr'SAVED {donor}')
 
     zip_file_name = f'Выгрузка 1П за {range_to_load[0]} - {range_to_load[1]}'
-    zip_file_path = os.path.join(rf'{download_path}\1p_zip', zip_file_name)
+    zip_file_path = os.path.join(fr'{working_path}\1p_zip', zip_file_name)
 
     try:
         Path(zip_file_path + '.zip').unlink()
     except:
-        pass
+        ...
     try:
-        os.makedirs(rf'{download_path}\1p_zip')
+        os.makedirs(fr'{working_path}\1p_zip')
     except:
-        pass
+        ...
 
-    shutil.make_archive(zip_file_path, 'zip', rf'{download_path}\1p')
+    shutil.make_archive(zip_file_path, 'zip', fr'{working_path}\1p')
 
-    send_message_by_smtp(smtp_host, to=['Abdykarim.D@magnum.kz'], subject=f'Выгрузка отчёта 1П за {range_to_load[0]} - {range_to_load[1]}',
+    send_message_by_smtp(smtp_host, to=['Abdykarim.D@magnum.kz', 'Mukhtarova@magnum.kz'], subject=f'Выгрузка отчёта 1П за {range_to_load[0]} - {range_to_load[1]}',
                          body='Результаты в приложении', username=smtp_author,
                          attachments=[zip_file_path + '.zip'])
 

@@ -15,7 +15,7 @@ def print_(*args, **kwargs):
     args = [str(i) for i in args]
     kwargs = [f'{str(i)}: {kwargs[i]}' for i in kwargs]
     args.extend(kwargs)
-    return ', '.join([str(i) for i in args])
+    return '| 1324'.join([str(i) for i in args])
 
 
 global_data = {
@@ -51,7 +51,20 @@ def on_get():
             parent_: App.Element = global_data['parent']
             element, selector = explorer.get_selector(parent_.element if parent_ else parent_)
             selector = {key: selector[key] for key in selector if selector[key] is not None}
-            selector = json.dumps(selector, ensure_ascii=False) if selector else None
+
+            flag = False
+            s1 = '{'
+            for keys, values in selector.items():
+                if values is not None:
+                    if (values is True or values is False) and flag is False:
+                        s1 += '\n'
+                        flag = True
+                s1 += f'"{keys}": "{values}", '
+            s1 = s1.strip()[:-1]
+            s1 += '}'
+
+            selector = s1
+
             io.emit('fill', selector)
             io.emit('status', {'level': logging.INFO, 'message': 'selector found'})
             global_data['element'] = App.Element(element)

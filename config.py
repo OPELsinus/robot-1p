@@ -7,7 +7,7 @@ from pathlib import Path
 
 import urllib3
 
-from tools import update_credentials, json_read, prevent_auto_lock, PostHandler
+from tools import update_credentials, json_read, prevent_auto_lock, PostHandler, get_hostname
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 prevent_auto_lock()
@@ -52,20 +52,15 @@ formatter = logging.Formatter(basic_format, datefmt=date_format)
 post_handler = PostHandler(f'{orc_host}/log')
 post_handler.setFormatter(formatter)
 post_handler.setLevel(logging.INFO)
-logger.addHandler(post_handler)
-log_path = local_path.joinpath('.agent\\robot-1p\\logs.txt')
-log_path.parent.mkdir(exist_ok=True, parents=True)
-file_handler = RotatingFileHandler(log_path.__str__(), maxBytes=1 * 1024 * 1024, backupCount=50, encoding="utf-8")
-file_handler.setFormatter(formatter)
-file_handler.setLevel(logging.DEBUG)
-logger.addHandler(file_handler)
-logger.setLevel(logging.DEBUG)
+
+project_name = 'robot-1p'
 
 config_path = global_path.joinpath(f'.agent\\robot-1p\\{socket.gethostbyname(socket.gethostname())}\\config.json')
 config_data = json_read(config_path)
 download_path = Path.home().joinpath('downloads')
-working_path = root_path.joinpath('working_path')
-working_path.mkdir(exist_ok=True, parents=True)
+working_path = r'\\172.16.8.87\d\.rpa\.agent\robot-1p\Output'
+for_stat_reports_path = r'\\172.16.8.87\d\.rpa\.agent\robot-1p\Output\Для стата'
+# for_stat_reports_path.mkdir(exist_ok=True, parents=True)
 chat_id = config_data['chat_id']
 
 if ctypes.windll.user32.GetKeyboardLayout(0) != 67699721:

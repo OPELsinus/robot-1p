@@ -1,7 +1,9 @@
 import ctypes
 import logging
+import shutil
 import socket
 import sys
+from contextlib import suppress
 from logging.handlers import RotatingFileHandler, TimedRotatingFileHandler
 from pathlib import Path
 
@@ -53,15 +55,24 @@ post_handler = PostHandler(f'{orc_host}/log')
 post_handler.setFormatter(formatter)
 post_handler.setLevel(logging.INFO)
 
+ip_address = socket.gethostbyname(socket.gethostname())
 project_name = 'robot-1p'
 
-config_path = global_path.joinpath(f'.agent\\robot-1p\\{socket.gethostbyname(socket.gethostname())}\\config.json')
+config_path = global_path.joinpath(f'.agent\\{project_name}\\{ip_address}\\config.json')
 config_data = json_read(config_path)
 download_path = Path.home().joinpath('downloads')
-working_path = r'\\172.16.8.87\d\.rpa\.agent\robot-1p\Output'
-for_stat_reports_path = r'\\172.16.8.87\d\.rpa\.agent\robot-1p\Output\Для стата'
-# for_stat_reports_path.mkdir(exist_ok=True, parents=True)
+
 chat_id = config_data['chat_id']
+template_path = config_data['template_path']
+donors_path = config_data['donors_path']
+saving_path = config_data['saving_path']
+saving_path_1p = config_data['saving_path_1p']
+for_stat_reports_path = config_data['for_stat_reports_path']
+
+Path(saving_path).mkdir(exist_ok=True, parents=True)
+Path(saving_path_1p).mkdir(exist_ok=True, parents=True)
+Path(for_stat_reports_path).mkdir(exist_ok=True, parents=True)
+
 
 if ctypes.windll.user32.GetKeyboardLayout(0) != 67699721:
     __err__ = 'Смените раскладку на ENG'

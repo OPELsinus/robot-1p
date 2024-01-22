@@ -12,7 +12,7 @@ import cx_Oracle
 import pandas as pd
 import win32com.client as win32
 
-from config import owa_username, owa_password, smtp_host, smtp_author, tg_token, chat_id, working_path, for_stat_reports_path
+from config import owa_username, owa_password, smtp_host, smtp_author, tg_token, chat_id, for_stat_reports_path, saving_path, saving_path_1p, template_path, donors_path, logger
 from tools import update_credentials, send_message_by_smtp, send_message_to_tg
 
 groups = [
@@ -54,7 +54,7 @@ groups = [
 
 def first_request():
 
-    connection = cx_Oracle.connect("RPA_ROBOT", "Qaz123123*", "REPS")
+    connection = cx_Oracle.connect("RPA_ROBOT", "Qaz123123*", "MAGODA")
 
     cursor = connection.cursor()
     print(connection)
@@ -116,10 +116,11 @@ def get_donors_id(donors_without_id1):
                             user='rpa_robot', password='Qaz123123+')
 
     cur = conn.cursor(name='1583_first_part')
+
     query = f"""
         select store_number, source_store_id, source_branch_id, store_name
         from dwh_data.dim_store ds 
-        where store_name like any (array[{[el for el in donors_without_id1]}])
+        where store_name like any (array{[el for el in donors_without_id1]})
         group by store_number, source_store_id, source_branch_id, store_name
     """
     cur.execute(query)
@@ -143,10 +144,6 @@ def write_branches_in_their_big_excels():
 
     # ? Create new page
 
-    excel = win32.gencache.EnsureDispatch('Excel.Application')
-    excel.Visible = False
-    excel.DisplayAlerts = False
-
     def open_excel(path):
 
         excel1 = win32.gencache.EnsureDispatch('Excel.Application')
@@ -157,30 +154,44 @@ def write_branches_in_their_big_excels():
 
         return [wb, ws]
 
-    for file in os.listdir(fr'{working_path}\1p'):
+    for file in os.listdir(saving_path_1p):
 
-        template_wb, template_ws = open_excel(r'\\172.16.8.87\d\.rpa\.agent\robot-1p\1-П формула - ШАБЛОН.xlsx')
+        print(f'Started {file}')
 
-        excel_ = win32.gencache.EnsureDispatch('Excel.Application')
-        excel_.Visible = False
-        excel_.DisplayAlerts = False
+        for tries in range(15):
+            try:
+                template_wb, template_ws = open_excel(template_path)
 
-        wb0 = excel_.Workbooks.Open(fr'{working_path}\1p\{file}')
-        ws0 = wb0.Worksheets(1)
+                excel_ = win32.gencache.EnsureDispatch('Excel.Application')
+                excel_.Visible = False
+                excel_.DisplayAlerts = False
 
-        last_row = ws0.Cells.SpecialCells(win32.constants.xlCellTypeLastCell).Row + 1
+                wb0 = excel_.Workbooks.Open(fr'{saving_path_1p}\{file}')
+                ws0 = wb0.Worksheets(1)
 
-        ws0.Range(f'A{1}:I{last_row}').Copy()
-        template_ws.Range(f'A1').PasteSpecial()
+                last_row = ws0.Cells.SpecialCells(win32.constants.xlCellTypeLastCell).Row + 1
 
-        wb0.Close(False)
+                ws0.Range(f'A{1}:I{last_row}').Copy()
+                template_ws.Range(f'A1').PasteSpecial()
 
-        template_wb.SaveAs(os.path.join(for_stat_reports_path, file))
-        template_wb.Close()
+                wb0.Close(False)
 
-    excel.Application.Quit()
+                # if 'ппф' in str(file).lower() or '23' in file:
+                #     template_wb.SaveAs(os.path.join(for_stat_reports_path, file.replace('.xlsx', '_stat.xlsx')))
+                #     template_wb.Close()
+                #
+                # else:
+                template_wb.SaveAs(os.path.join(for_stat_reports_path, file.replace('.xlsx', '_stat.xlsx')))
+                template_wb.Close()
 
-    # baishukova_wb, baishukova_ws = open_excel(ardak_path)
+                break
+
+            except Exception as err:
+                print(f"ERROR WHEN SAVING IN BIG EXCELS: {err}")
+                logger.info(f"ERROR WHEN SAVING IN BIG EXCELS: {err}")
+                sleep(3)
+
+    # excel.Application.Quit()
 
     print('Заканчиваем2')
     print('Finishing2')
@@ -195,11 +206,12 @@ if __name__ == '__main__':
     quarters = [[1, 2, 3], [4, 5, 6], [7, 8, 9], [10, 11, 12]]
 
     month = today.month
-    month = 10
+    # month = 1
     day = today.day
     year = today.year
 
     range_to_load = []
+    is_quarterly = False
 
     for ind, quarter in enumerate(quarters):
         if month in quarter and month == quarters[ind][0]:
@@ -210,24 +222,48 @@ if __name__ == '__main__':
             else:
                 range_to_load.append(datetime.date(year, quarters[ind - 1][0], 1).strftime('%Y-%m-%d'))
                 range_to_load.append((datetime.date(year, quarters[ind - 1][-1] + 1, 1) - datetime.timedelta(days=1)).strftime('%Y-%m-%d'))
+
+            is_quarterly = True
+
     # print(range_to_load)
     print(range_to_load)
+    print(len(range_to_load))
 
-    # if len(range_to_load) == 0:
-    #     print('vihod')
-    #     exit()
+    today = datetime.date.today()
+
+    if len(range_to_load) == 0:
+        print('vyhod')
+        logger.info('Not quarter')
+        exit()
 
     df_wnodes = first_request()
     df_wnodes.columns = ['code', 'stat_code', 'unit', 'name', 'weight', 'group']
     df_wnodes['weight'] = df_wnodes['weight'].astype(float)
     df_wnodes['stat_code'] = df_wnodes['stat_code'].astype(int)
 
+    with suppress(Exception):
+        shutil.rmtree(saving_path_1p)
+    Path(saving_path_1p).mkdir(exist_ok=True, parents=True)
+
     for sheets in range(3):
         update_credentials(Path(r'\\172.16.8.87\d'), owa_username, owa_password)
-        donors = pd.read_excel(r'\\172.16.8.87\d\Dauren\codes_my.xlsx', sheet_name=sheets)
+        donors = pd.read_excel(donors_path, sheet_name=sheets)
 
         for ind, donor in enumerate(donors.columns[1:]):
 
+            if is_quarterly:
+                range_to_load1, range_to_load2 = range_to_load[0], range_to_load[1]
+
+            elif 'ппф' in str(donor).lower() and '23' in donor:
+                continue
+
+            # else:
+            #     continue
+            # print(ind, donor)
+            # continue
+            # if 'аф №10' not in str(donor).lower():
+            #     continue
+            print(donor)
             df_total = pd.DataFrame(columns=['code', 'article', 'name', 'unit', 'weight', 'price', 'sold', 'sold_in_unit', 'acc_price'])
 
             df_total.loc[0] = ['Стат. Отчет по продукции собственного производства', '', '', '', '', '', '', '', '']
@@ -252,7 +288,7 @@ if __name__ == '__main__':
             donors_with_id = donors_with_id.reset_index(drop=True)
 
             for ind1, single_donor_id in enumerate(donors_with_id['id']):
-                print(f"Started {donors_with_id['name'].iloc[ind1]}")
+                print(f"Started {donors_with_id['name'].iloc[ind1]} | {range_to_load[0]}, {range_to_load[1]}")
                 df = second_request(single_donor_id, range_to_load[0], range_to_load[1])
                 # print(df, single_donor_id, donors_with_id.iloc[ind1])
                 try:
@@ -305,40 +341,38 @@ if __name__ == '__main__':
                     start = len(df_total)
 
                     for row in range(len(cur_df)):
-                        df_total.loc[len(df_total)] = [int(cur_df.loc[row, 'code']), int(cur_df.loc[row, 'stat_code']), cur_df.loc[row, 'name'], cur_df.loc[row, 'unit'], float(cur_df.loc[row, 'weight']), float(cur_df.loc[row, 'avg_price']), float(cur_df.loc[row, 'quantity']), float(cur_df.loc[row, 'quantity']) * float(cur_df.loc[row, 'weight']), float(cur_df.loc[row, 'acc_cost'])]
+                        stat_code = int(cur_df.loc[row, 'stat_code']) if int(cur_df.loc[row, 'stat_code']) != 107111290 else 107111220
+                        df_total.loc[len(df_total)] = [int(cur_df.loc[row, 'code']), stat_code, cur_df.loc[row, 'name'], cur_df.loc[row, 'unit'], float(cur_df.loc[row, 'weight']), float(cur_df.loc[row, 'avg_price']), float(cur_df.loc[row, 'quantity']), float(cur_df.loc[row, 'quantity']) * float(cur_df.loc[row, 'weight']), float(cur_df.loc[row, 'quantity']) * float(cur_df.loc[row, 'weight']) * float(cur_df.loc[row, 'avg_price'])]
                     df_total.loc[len(df_total)] = [f'ИТОГО: {group}', '', '', '', '', '', sum(cur_df['quantity'].astype('float')), sum(cur_df['quantity'].astype('float')), sum(df_total.loc[start:, 'acc_price'].astype('float'))]
 
             # for i in df_total.columns[4:]:
             #     df_total[i] = df_total[i].astype(float)
             # df_total['article'] = df_total['article'].astype(float)
 
-            try:
-                os.makedirs(fr'{working_path}\1p')
-            except:
-                pass
+            # try:
+            #     os.makedirs(saving_path_1p)
+            # except:
+            #     pass
 
-            df_total.to_excel(fr'{working_path}\1p\{donor}_dwh.xlsx', header=None, index=False)
+            df_total.to_excel(fr'{saving_path_1p}\{donor}.xlsx', header=None, index=False)
             print(fr'SAVED {donor}')
 
+    # * Uncomment all below
     zip_file_name = f'Выгрузка 1П за {range_to_load[0]} - {range_to_load[1]}'
-    zip_file_path = os.path.join(fr'{working_path}\1p_zip', zip_file_name)
+    zip_file_path = os.path.join(fr'{saving_path}\1p_zip', zip_file_name)
 
-    try:
-        Path(zip_file_path + '.zip').unlink()
-    except:
-        ...
-    try:
-        os.makedirs(fr'{working_path}\1p_zip')
-    except:
-        ...
+    shutil.make_archive(zip_file_path, 'zip', saving_path_1p)
 
-    shutil.make_archive(zip_file_path, 'zip', fr'{working_path}\1p')
+    with suppress(Exception):
+        shutil.rmtree(for_stat_reports_path)
+
+    Path(for_stat_reports_path).mkdir(exist_ok=True, parents=True)
 
     write_branches_in_their_big_excels()
 
-    send_message_by_smtp(smtp_host, to=['Abdykarim.D@magnum.kz', 'Mukhtarova@magnum.kz'], subject=f'Выгрузка отчёта 1П за {range_to_load[0]} - {range_to_load[1]}',
-                         body='Результаты в приложении', username=smtp_author,
-                         attachments=[zip_file_path + '.zip'])
+    # send_message_by_smtp(smtp_host, to=['Abdykarim.D@magnum.kz', 'Mukhtarova@magnum.kz'], subject=f'Выгрузка отчёта 1П за {range_to_load[0]} - {range_to_load[1]}',
+    #                      body='Результаты в приложении', username=smtp_author,
+    #                      attachments=[zip_file_path + '.zip'])
 
     send_message_to_tg(tg_token, chat_id, f'Выгрузка 1П завершилась\n\nОтрабатывал за период:\n{range_to_load[0]} - {range_to_load[1]}')
 

@@ -69,10 +69,6 @@ saving_path = config_data['saving_path']
 saving_path_1p = config_data['saving_path_1p']
 for_stat_reports_path = config_data['for_stat_reports_path']
 
-Path(saving_path).mkdir(exist_ok=True, parents=True)
-Path(saving_path_1p).mkdir(exist_ok=True, parents=True)
-Path(for_stat_reports_path).mkdir(exist_ok=True, parents=True)
-
 
 if ctypes.windll.user32.GetKeyboardLayout(0) != 67699721:
     __err__ = 'Смените раскладку на ENG'

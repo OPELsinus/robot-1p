@@ -210,6 +210,16 @@ if __name__ == '__main__':
     day = today.day
     year = today.year
 
+    with suppress(Exception):
+        shutil.rmtree(saving_path)
+    Path(saving_path).mkdir(exist_ok=True, parents=True)
+    with suppress(Exception):
+        shutil.rmtree(saving_path_1p)
+    Path(saving_path_1p).mkdir(exist_ok=True, parents=True)
+    with suppress(Exception):
+        shutil.rmtree(for_stat_reports_path)
+    Path(for_stat_reports_path).mkdir(exist_ok=True, parents=True)
+
     range_to_load = []
     is_quarterly = False
 
@@ -370,9 +380,9 @@ if __name__ == '__main__':
 
     write_branches_in_their_big_excels()
 
-    # send_message_by_smtp(smtp_host, to=['Abdykarim.D@magnum.kz', 'Mukhtarova@magnum.kz'], subject=f'Выгрузка отчёта 1П за {range_to_load[0]} - {range_to_load[1]}',
-    #                      body='Результаты в приложении', username=smtp_author,
-    #                      attachments=[zip_file_path + '.zip'])
+    send_message_by_smtp(smtp_host, to=['Abdykarim.D@magnum.kz', 'Mukhtarova@magnum.kz'], subject=f'Выгрузка отчёта 1П за {range_to_load[0]} - {range_to_load[1]}',
+                         body='Результаты в приложении', username=smtp_author,
+                         attachments=[zip_file_path + '.zip'])
 
     send_message_to_tg(tg_token, chat_id, f'Выгрузка 1П завершилась\n\nОтрабатывал за период:\n{range_to_load[0]} - {range_to_load[1]}')
 
